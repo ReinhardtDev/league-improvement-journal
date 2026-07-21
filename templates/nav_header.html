@@ -1,0 +1,40 @@
+<nav class="navbar">
+    <div class="navbar-inner">
+        <a href="{{ url_for('index') }}"
+           class="nav-home-btn {% if request.endpoint == 'index' %}active{% endif %}"
+           title="Home"
+           aria-label="Home">
+            <i data-lucide="house"></i>
+        </a>
+
+        <ul class="nav-links">
+            {% if grind %}
+                <li>
+                    <a href="{{ url_for('champion_pool', grind_id=grind.grind_id) }}"
+                       class="{% if request.endpoint == 'champion_pool' %}active{% endif %}">
+                        Champion Pool
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('view_grind', grind_id=grind.grind_id) }}"
+                       class="{% if request.endpoint == 'view_grind' %}active{% endif %}">
+                        Match History
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('view_goals', grind_id=grind.grind_id) }}"
+                       class="{% if request.endpoint == 'view_goals' %}active{% endif %}">
+                        Goals
+                    </a>
+                </li>
+            {% else %}
+                <li>
+                    <a href="{{ url_for('create_grind') }}"
+                       class="{% if request.endpoint == 'create_grind' %}active{% endif %}">
+                        Start New Grind
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+</nav>

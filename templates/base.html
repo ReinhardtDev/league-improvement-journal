@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>League Improvement Journal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+{% if show_navbar != False %}
+    {% include 'nav_header.html' %}
+{% endif %}
+
+<main>
+    {% block content %}
+
+    {% endblock %}
+</main>
+{% block scripts %}
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            lucide.createIcons();
+        });
+    </script>
+{% endblock %}
+</body>
+</html>

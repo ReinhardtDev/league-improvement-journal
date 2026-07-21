@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <form action="/create_grind" method="POST">
+        <label>Riot ID:</label>
+        <input type="text" name="game_name" placeholder="Hide on bush" required>
+
+        <label>#</label>
+        <input type="text" name="tag_line" placeholder="KR1" required>
+
+        <label>Region:</label>
+        <select name="region">
+            <option value="na1">NA</option>
+            <option value="euw1">EUW</option>
+            <option value="eun1">EUNE</option>
+            <option value="kr">KR</option>
+        </select>
+
+        <button type="submit">Start Grinding</button>
+    </form>
+{% endblock %}

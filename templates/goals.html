@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="goals-container">
+
+        <div class="rank-goal-card">
+            {% if goal_manager.active_rank_goal %}
+                <span class="label">Rank Goal:</span>
+                <span class="value">{{ goal_manager.active_rank_goal.target_lp }} LP</span>
+            {% else %}
+                <span class="label">LP goal with graph etc. coming soon tm</span>
+            {% endif %}
+            <button type="button" class="btn goal-btn" onclick="openCreateGoalModal()">
+                <i data-lucide="plus" class="icon-sm"></i>
+                <span>Add Goal</span>
+            </button>
+        </div>
+
+
+        <div class="goals-grid">
+
+            <div class="goal-column">
+                <h2 class="column-title">Per Game Goals</h2>
+                <div class="goal-list">
+                    {% for goal in goal_manager.general_goals %}
+                        {% if goal.goal_type == 'per_game' %}
+                            <div class="goal-card">
+                                <span class="bullet">•</span>
+                                <p class="goal-text">{{ goal.description }}</p>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="goal-column">
+                <h2 class="column-title">Long Term Goals</h2>
+                <div class="goal-list">
+                    {% for goal in goal_manager.general_goals %}
+                        {% if goal.goal_type == 'long_term' %}
+                            <div class="goal-card">
+                                <span class="bullet pin">•</span>
+                                <p class="goal-text">{{ goal.description }}</p>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="createGoalModal" class="modal-overlay hidden">
+        <div class="modal-box modal-wide">
+            <div class="modal-header">
+                <h3>Create Goal</h3>
+                <button type="button" class="modal-close" onclick="closeCreateGoalModal()" aria-label="Close">
+                    &times;
+                </button>
+            </div>
+            <form id="createGoalForm" method="POST" action="{{ url_for('add_goal', grind_id=grind.grind_id) }}">
+                <input type="hidden" name="grind_id" value="{{ grind.grind_id }}">
+                <div class="form-group">
+                    <label for="description">Goal Description</label>
+                    <input type="text" id="description" name="description" required>
+                    <span class="form-hint">What are you working on?</span>
+                </div>
+                <div class="form-group">
+                    <label for="goal_type">Type</label>
+                    <select id="goal_type" name="goal_type" required>
+                        <option value="per_game">Per Game</option>
+                        <option value="long_term">Long Term</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeCreateGoalModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <span class="btn-text">Create Goal</span>
+                        <span class="btn-loader hidden">
+                            <i data-lucide="loader-2" class="spinner"></i>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+
+        const modal = document.getElementById('createGoalModal');
+
+        function openCreateGoalModal() {
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('description').focus();
+            }
+        }
+
+        function closeCreateGoalModal() {
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('createGoalForm').reset();
+            }
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeCreateGoalModal();
+            }
+        });
+    </script>
+{% endblock %}

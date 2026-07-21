@@ -1,0 +1,414 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <section class="grinds-section">
+        <header class="index-header">
+            <div class="header-content">
+                <div class="title-group">
+                    <h1 class="journal-title">League Improvement Journal</h1>
+                    <p class="journal-subtitle">Track your ranked climb, match history, and champion pool!</p>
+                </div>
+                <div class="header-actions">
+                    <button type="button" class="new-grind-btn" onclick="openCreateGrindModal()">
+                        <i data-lucide="plus" class="icon-sm"></i>
+                        <span>New Grind</span>
+                    </button>
+                    <div id="apiKeyStatus" class="api-key-status">
+                    <span id="apiKeyBadge" class="api-key-badge loading">
+                        <i data-lucide="loader-2" class="spinner"></i>
+                        <span>Checking API key...</span>
+                    </span>
+                        <button type="button" class="api-key-btn" onclick="openApiKeyModal()"
+                                title="Manage Riot API Key">
+                            <i data-lucide="key" class="icon-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Modal: Create New Grind -->
+        <div id="createGrindModal" class="modal-overlay hidden">
+            <div class="modal-box modal-wide">
+                <div class="modal-header">
+                    <h3>Start New Grind</h3>
+                    <button type="button" class="modal-close" onclick="closeCreateGrindModal()" aria-label="Close">
+                        &times;
+                    </button>
+                </div>
+                <form id="createGrindForm" method="POST" action="{{ url_for('create_grind') }}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="title">Grind Title</label>
+                            <input type="text" id="title" name="title"
+                                   placeholder="e.g., Rank 1 Rush, Challenger Speedrun" required autocomplete="off">
+                            <span class="form-hint">Give your epic grind a title!</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="game_name">Riot ID</label>
+                            <input type="text" id="game_name" name="game_name" placeholder="Hide on bush" required
+                                   autocomplete="off">
+                            <span class="form-hint">Your game name (without tag)</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="tag_line">Tag Line</label>
+                            <input type="text" id="tag_line" name="tag_line" placeholder="KR1" required
+                                   autocomplete="off" maxlength="5">
+                            <span class="form-hint">The #tag after your name</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="region">Region</label>
+                            <select id="region" name="region" required>
+                                <option value="na1">NA</option>
+                                <option value="euw1">EUW</option>
+                                <option value="eun1">EUNE</option>
+                                <option value="kr">KR</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" onclick="closeCreateGrindModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">
+                            <span class="btn-text">Create Grind</span>
+                            <span class="btn-loader hidden">
+                <i data-lucide="loader-2" class="spinner"></i>
+            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- API Key Modal -->
+        <div id="apiKeyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
+            <div class="modal-overlay" onclick="closeApiKeyModal()"></div>
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2 id="apiKeyModalTitle">Riot API Key</h2>
+                    <button type="button" class="modal-close" onclick="closeApiKeyModal()" aria-label="Close">
+                        <i data-lucide="x" class="icon-sm"></i>
+                    </button>
+                </div>
+                <form id="apiKeyForm">
+                    <div class="modal-body">
+                        <p class="modal-description">Enter your Riot API key</p>
+                        <div class="form-group">
+                            <label for="apiKeyInput">API Key</label>
+                            <input type="password" id="apiKeyInput" name="api_key"
+                                   placeholder="RGAPI-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required autocomplete="off">
+                        </div>
+                        <div id="apiKeyResult" class="api-key-result hidden"></div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" onclick="closeApiKeyModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">Test & Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if grinds %}
+            <ul class="grind-list">
+                {% for grind in grinds %}
+                    <li class="grind-card">
+                        <a href="{{ url_for('view_grind', grind_id=grind.grind_id) }}" class="grind-link">
+                            <div class="grind-info">
+                                <h3 class="grind-title">{{ grind.title }}</h3>
+                                <p class="grind-summoner">{{ grind.summoner_name }}</p>
+                                <div class="grind-meta">
+                                    <div class="meta-row">
+                                        <span class="meta-label">Start Rank</span>
+                                        <span class="meta-value rank-badge start">{{ grind.start_rank }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Current Rank</span>
+                                        <span class="meta-value rank-badge current">{{ grind.current_rank }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Started</span>
+                                        <span class="meta-value date">{{ grind.start_date }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grind-arrow">
+                                <i data-lucide="chevron-right"></i>
+                            </div>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty-state">
+                <h2>No Grinds Yet</h2>
+                <p>Start your first ranked climb journey</p>
+                <button type="button" class="new-grind-btn inline" onclick="openCreateGrindModal()">
+                    <i data-lucide="plus" class="icon-sm"></i>
+                    <span>Create Your First Grind</span>
+                </button>
+            </div>
+        {% endif %}
+    </section>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            try {
+                const resp = await fetch('/api/key-status');
+                const data = await resp.json();
+                updateApiKeyBadge(data.status, data.message);
+            } catch (e) {
+                updateApiKeyBadge('invalid', 'Failed to check API key');
+            }
+        });
+
+        function updateApiKeyBadge(status, message) {
+            const badge = document.getElementById('apiKeyBadge');
+            if (!badge) return;
+            badge.className = 'api-key-badge';
+            badge.classList.add(status);
+            if (status === 'valid') {
+                badge.innerHTML = '<i data-lucide="check-circle" class="icon-sm"></i><span>API key valid</span>';
+            } else if (status === 'invalid') {
+                badge.innerHTML = '<i data-lucide="alert-circle" class="icon-sm"></i><span>' + escapeHtml(message) + '</span>';
+            } else {
+                badge.classList.add('loading');
+                badge.innerHTML = '<i data-lucide="loader-2" class="spinner"></i><span>Checking API key...</span>';
+            }
+            lucide.createIcons();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeApiKeyModal();
+        });
+
+        document.getElementById('apiKeyForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const form = this;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const resultDiv = document.getElementById('apiKeyResult');
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+
+            if (!apiKey) return;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Testing...';
+            resultDiv.classList.add('hidden');
+
+            try {
+                const resp = await fetch('/api/test-key', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({api_key: apiKey})
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    const saveResp = await fetch('/api/save-key', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({api_key: apiKey})
+                    });
+                    const saveData = await saveResp.json();
+                    if (saveData.success) {
+                        resultDiv.className = 'api-key-result success';
+                        resultDiv.textContent = 'API key saved successfully!';
+                        resultDiv.classList.remove('hidden');
+                        setTimeout(() => {
+                            closeApiKeyModal();
+                            updateApiKeyBadge('valid', 'API key valid');
+                        }, 1000);
+                    } else {
+                        resultDiv.className = 'api-key-result error';
+                        resultDiv.textContent = 'Failed to save: ' + (saveData.error || 'Unknown error');
+                        resultDiv.classList.remove('hidden');
+                    }
+                } else {
+                    resultDiv.className = 'api-key-result error';
+                    resultDiv.textContent = 'Invalid key: ' + (data.error || 'Unknown error');
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                resultDiv.className = 'api-key-result error';
+                resultDiv.textContent = 'Error: ' + err.message;
+                resultDiv.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Test & Save';
+            }
+        });
+
+        const modal = document.getElementById('createGrindModal');
+
+        function openCreateGrindModal() {
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('title').focus();
+            }
+        }
+
+        function closeCreateGrindModal() {
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('createGrindForm').reset();
+            }
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeCreateGrindModal();
+            }
+        });
+
+        document.getElementById('createGrindForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const form = this;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const btnLoader = submitBtn.querySelector('.btn-loader');
+
+            submitBtn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    window.location.href = result.redirect;
+                } else {
+                    alert(result.error || 'Failed to create grind');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                submitBtn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
+        });
+
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const apiKeyForm = document.getElementById('apiKeyForm');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiKeyResult = document.getElementById('apiKeyResult');
+        let apiKeySubmitBtn = null;
+
+        function openApiKeyModal() {
+            if (apiKeyModal) {
+                apiKeyModal.classList.remove('hidden');
+                apiKeyInput.value = '';
+                apiKeyResult.classList.add('hidden');
+                apiKeyResult.textContent = '';
+                apiKeyResult.className = 'api-key-result hidden';
+                setTimeout(() => apiKeyInput.focus(), 100);
+            }
+        }
+
+        function closeApiKeyModal() {
+            if (apiKeyModal) {
+                apiKeyModal.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && apiKeyModal && !apiKeyModal.classList.contains('hidden')) {
+                closeApiKeyModal();
+            }
+        });
+
+        if (apiKeyForm) {
+            apiKeyForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const apiKey = apiKeyInput.value.trim();
+                if (!apiKey) return;
+
+                const submitBtn = apiKeyForm.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Testing...';
+
+                apiKeyResult.classList.add('hidden');
+                apiKeyResult.textContent = '';
+                apiKeyResult.className = 'api-key-result hidden';
+
+                try {
+                    const testResp = await fetch('/api/test-key', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({api_key: apiKey})
+                    });
+                    const testResult = await testResp.json();
+
+                    if (!testResult.success) {
+                        apiKeyResult.textContent = testResult.error || 'Invalid API key';
+                        apiKeyResult.className = 'api-key-result error';
+                        apiKeyResult.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                        return;
+                    }
+
+                    const saveResp = await fetch('/api/save-key', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({api_key: apiKey})
+                    });
+                    const saveResult = await saveResp.json();
+
+                    if (saveResult.success) {
+                        apiKeyResult.textContent = 'API key saved! Reloading...';
+                        apiKeyResult.className = 'api-key-result success';
+                        apiKeyResult.classList.remove('hidden');
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        apiKeyResult.textContent = saveResult.error || 'Failed to save API key';
+                        apiKeyResult.className = 'api-key-result error';
+                        apiKeyResult.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    apiKeyResult.textContent = 'An error occurred. Please try again.';
+                    apiKeyResult.className = 'api-key-result error';
+                    apiKeyResult.classList.remove('hidden');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            lucide.createIcons();
+
+            const badge = document.getElementById('apiKeyBadge');
+            if (badge) {
+                const keyStatus = "{{ key_status }}";
+                const keyMessage = "{{ key_message }}";
+                badge.classList.remove('loading', 'valid', 'invalid');
+                badge.classList.add(keyStatus);
+                const textSpan = badge.querySelector('span') || badge;
+                textSpan.textContent = keyMessage;
+            }
+        });
+    </script>
+{% endblock %}

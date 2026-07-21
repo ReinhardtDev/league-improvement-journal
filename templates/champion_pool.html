@@ -1,0 +1,607 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <div class="champion-pool-header">
+        <div class="header-left">
+            <h2>Champion Pool</h2>
+            <span class="summoner-badge">{{ grind.summoner_name }}</span>
+        </div>
+    </div>
+
+    <div class="champion-grid" id="championGrid">
+        {% for champ in pool.champions %}
+            <div class="champ-card" data-champ-id="{{ champ.pool_champion_id }}">
+                <img src="https://ddragon.leagueoflegends.com/cdn/{{ ddragon_version }}/img/champion/{{ champ.champion_name }}.png"
+                     alt="{{ champ.champion_name }}"
+                     class="champ-icon">
+                <span class="champ-name">{{ champ.champion_name }}</span>
+                <button type="button" class="champ-delete-btn"
+                        data-champ-id="{{ champ.pool_champion_id }}"
+                        data-champ-name="{{ champ.champion_name }}"
+                        aria-label="Delete {{ champ.champion_name }}">
+                    <i data-lucide="trash-2"></i>
+                </button>
+            </div>
+        {% endfor %}
+        <button type="button" class="add-champ-btn champ-card" data-action="add-champion">
+            <i data-lucide="plus"></i>
+        </button>
+    </div>
+
+    <div class="matchup-section" id="matchupSection" style="display: none;">
+        <div class="matchup-header">
+            <div class="matchup-champ-info">
+                <img id="activeChampIcon" src="" alt="" class="champ-icon-large">
+                <div>
+                    <h3 id="activeChampName"></h3>
+                    <span class="matchup-count" id="matchupCount">0 matchups</span>
+                </div>
+            </div>
+            <button type="button" class="btn-primary add-matchup-btn" data-action="add-matchup">
+                <i data-lucide="plus"></i>
+                Add Matchup
+            </button>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="matchup-table">
+                <thead>
+                <tr>
+                    <th>Opponent</th>
+                    <th>To Do</th>
+                    <th>Not To Do</th>
+                    <th>Notes</th>
+                    <th style="width: 48px;"></th>
+                </tr>
+                </thead>
+                <tbody id="matchupTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="empty-matchups" id="emptyMatchups" style="display: none;">
+            <!-- here put something for when there is no match up yet -->
+        </div>
+    </div>
+
+    <div id="addChampModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Add Champion to Pool</h3>
+                <button type="button" class="modal-close" data-action="close-add-champ" aria-label="Close">&times;
+                </button>
+            </div>
+            <form id="addChampForm" method="POST" action="{{ url_for('add_champion', grind_id=grind.grind_id) }}">
+                <input type="hidden" name="pool_id" value="{{ pool.pool_id }}">
+                <div class="form-group">
+                    <label for="champion_name">Champion Name</label>
+                    <input type="text" id="champion_name" name="champion_name" placeholder="e.g., Ahri, Lee Sin"
+                           required autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" data-action="close-add-champ">Cancel</button>
+                    <button type="submit" class="btn-primary">Add Champion</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addMatchupModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Add Matchup for <span id="matchupChampName"></span></h3>
+                <button type="button" class="modal-close" data-action="close-add-matchup" aria-label="Close">&times;
+                </button>
+            </div>
+            <form id="addMatchupForm" method="POST">
+                <input type="hidden" id="matchupPoolChampionId" name="pool_champion_id">
+                <div class="form-group">
+                    <label for="matchup_opponent">Opponent Champion</label>
+                    <input type="text" id="matchup_opponent" name="opponent" placeholder="e.g., Yasuo, Zed" required
+                           autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="matchup_todo">To Do</label>
+                    <textarea id="matchup_todo" name="todo" rows="3"
+                              placeholder="What to do in this matchup..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="matchup_not_todo">Not To Do</label>
+                    <textarea id="matchup_not_todo" name="not_todo" rows="3"
+                              placeholder="What to avoid in this matchup..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="matchup_notes">General Notes</label>
+                    <textarea id="matchup_notes" name="notes" rows="3" placeholder="Additional notes..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" data-action="close-add-matchup">Cancel</button>
+                    <button type="submit" class="btn-primary">Add Matchup</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editMatchupModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Edit Matchup vs <span id="editMatchupOpponent"></span></h3>
+                <button type="button" class="modal-close" data-action="close-edit-matchup" aria-label="Close">&times;
+                </button>
+            </div>
+            <form id="editMatchupForm" method="POST">
+                <input type="hidden" id="editMatchupId" name="matchup_id">
+                <input type="hidden" id="editMatchupPoolChampionId" name="pool_champion_id">
+                <div class="form-group">
+                    <label for="edit_matchup_opponent">Opponent Champion</label>
+                    <input type="text" id="edit_matchup_opponent" name="opponent" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="edit_matchup_todo">To Do</label>
+                    <textarea id="edit_matchup_todo" name="todo" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit_matchup_not_todo">Not To Do</label>
+                    <textarea id="edit_matchup_not_todo" name="not_todo" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit_matchup_notes">General Notes</label>
+                    <textarea id="edit_matchup_notes" name="notes" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" data-action="close-edit-matchup">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal-overlay hidden">
+        <div class="modal-box modal-confirm">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Confirm</h3>
+                <button type="button" class="modal-close" data-action="close-confirm" aria-label="Close">&times;
+                </button>
+            </div>
+            <p id="confirmMessage"></p>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" data-action="close-confirm">Cancel</button>
+                <button type="button" class="btn-danger" id="confirmActionBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+        const championData = {{ pool.champions | tojson | safe }};
+        const grindId = {{ grind.grind_id | tojson | safe }};
+        const poolId = {{ pool.pool_id | tojson | safe }};
+        let activeChampId = null;
+        let confirmCallback = null;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            setupEventDelegation();
+            setupFormHandlers();
+        });
+
+        function selectChampion(champId) {
+            activeChampId = champId;
+            document.querySelectorAll('.champ-card').forEach(c => c.classList.remove('active'));
+
+            const card = document.querySelector(`.champ-card[data-champ-id="${champId}"]`);
+            if (card) card.classList.add('active');
+
+            const champ = championData.find(c => c.pool_champion_id == champId);
+            if (champ) {
+                document.getElementById('activeChampIcon').src = `https://ddragon.leagueoflegends.com/cdn/{{ ddragon_version }}/img/champion/${champ.champion_name}.png`;
+                document.getElementById('activeChampIcon').alt = champ.champion_name;
+                document.getElementById('activeChampName').textContent = champ.champion_name;
+                document.getElementById('matchupCount').textContent = `${champ.matchups.length} matchup${champ.matchups.length !== 1 ? 's' : ''}`;
+
+                loadMatchups(champId);
+                document.getElementById('matchupSection').style.display = 'block';
+            }
+        }
+
+        function setupEventDelegation() {
+            const championGrid = document.getElementById('championGrid');
+            const matchupTableBody = document.getElementById('matchupTableBody');
+
+            document.addEventListener('click', function (e) {
+                if (e.target.closest('[data-action="add-champion"]')) {
+                    openAddChampModal();
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                if (e.target.closest('[data-action="add-matchup"]')) {
+                    openAddMatchupModal();
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                const action = e.target.closest('[data-action]')?.dataset.action;
+                if (!action) return;
+
+                if (action === 'close-add-champ') closeAddChampModal();
+                else if (action === 'close-add-matchup') closeAddMatchupModal();
+                else if (action === 'close-edit-matchup') closeEditMatchupModal();
+                else if (action === 'close-confirm') closeConfirmModal();
+            });
+
+            if (championGrid) {
+                championGrid.addEventListener('click', function (e) {
+                    const deleteBtn = e.target.closest('.champ-delete-btn');
+                    if (deleteBtn) {
+                        e.stopPropagation();
+                        confirmDeleteChampion(deleteBtn.dataset.champId, deleteBtn.dataset.champName);
+                        return;
+                    }
+
+                    const card = e.target.closest('.champ-card');
+                    if (card) {
+                        selectChampion(card.dataset.champId);
+                    }
+                });
+            }
+
+            if (matchupTableBody) {
+                matchupTableBody.addEventListener('click', function (e) {
+                    const row = e.target.closest('tr[data-matchup-id]');
+                    if (!row) return;
+
+                    const matchupId = row.dataset.matchupId;
+                    const opponentCell = row.querySelector('.opponent-name');
+                    const opponent = opponentCell ? opponentCell.textContent : '';
+
+                    const editBtn = e.target.closest('.edit-mu-btn');
+
+                    if (editBtn) {
+                        openEditMatchupModal(
+                            parseInt(matchupId, 10),
+                            opponent,
+                            editBtn.dataset.todo || '',
+                            editBtn.dataset.notTodo || '',
+                            editBtn.dataset.notes || ''
+                        );
+                    } else if (e.target.closest('.delete-btn')) {
+                        confirmDeleteMatchup(parseInt(matchupId, 10), opponent);
+                    }
+                });
+            }
+        }
+
+        function setupFormHandlers() {
+            const addChampForm = document.getElementById('addChampForm');
+            const addMatchupForm = document.getElementById('addMatchupForm');
+            const editMatchupForm = document.getElementById('editMatchupForm');
+
+            if (addChampForm) {
+                addChampForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData.entries());
+                    try {
+                        const resp = await fetch(this.action, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(data)
+                        });
+                        const result = await resp.json();
+                        if (result.success) {
+                            closeAddChampModal();
+                            location.reload();
+                        } else {
+                            alert(result.error || 'Failed to add champion');
+                        }
+                    } catch (err) {
+                        alert('Error adding champion');
+                    }
+                });
+            }
+
+            if (addMatchupForm) {
+                addMatchupForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData.entries());
+                    try {
+                        const resp = await fetch('{{ url_for("add_matchup", grind_id=grind.grind_id) }}', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(data)
+                        });
+                        const result = await resp.json();
+                        if (result.success) {
+                            closeAddMatchupModal();
+                            await refreshChampionData();
+                            loadMatchups(activeChampId);
+                        } else {
+                            alert(result.error || 'Failed to add matchup');
+                        }
+                    } catch (err) {
+                        alert('Error adding matchup');
+                    }
+                });
+            }
+
+            if (editMatchupForm) {
+                editMatchupForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData.entries());
+                    try {
+                        const resp = await fetch('{{ url_for("update_matchup", grind_id=grind.grind_id) }}', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(data)
+                        });
+                        const result = await resp.json();
+                        if (result.success) {
+                            closeEditMatchupModal();
+                            await refreshChampionData();
+                            loadMatchups(activeChampId);
+                        } else {
+                            alert(result.error || 'Failed to update matchup');
+                        }
+                    } catch (err) {
+                        alert('Error updating matchup');
+                    }
+                });
+            }
+        }
+
+        async function refreshChampionData() {
+            try {
+                const resp = await fetch(`{{ url_for("get_pool_json", grind_id=grind.grind_id) }}`);
+                const data = await resp.json();
+                if (data.success && data.champions) {
+                    championData.splice(0, championData.length, ...data.champions);
+                }
+            } catch (err) {
+                console.error('Failed to refresh champion data:', err);
+            }
+        }
+
+        function loadMatchups(champId) {
+            const champ = championData.find(c => c.pool_champion_id == champId);
+            const tbody = document.getElementById('matchupTableBody');
+            const emptyState = document.getElementById('emptyMatchups');
+            const tableWrapper = document.querySelector('.table-wrapper');
+            if (!tableWrapper) return;
+
+            if (!tbody) return;
+
+            if (!champ || !champ.matchups || champ.matchups.length === 0) {
+                tbody.innerHTML = '';
+                if (tableWrapper) tableWrapper.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'block';
+                return;
+            }
+
+            if (tableWrapper) tableWrapper.style.display = 'block';
+            if (emptyState) emptyState.style.display = 'none';
+
+            tbody.innerHTML = champ.matchups.map(m => {
+                const escapedTodo = escapeHtml(m.todo);
+                const escapedNotTodo = escapeHtml(m.not_todo);
+                const escapedNotes = escapeHtml(m.notes);
+
+                // 2. Convert raw newlines to HTML break tags, fallback to a dash if empty
+                const todoHtml = escapedTodo ? escapedTodo.replace(/\n/g, '<br>') : '<span class="empty-text">—</span>';
+                const notTodoHtml = escapedNotTodo ? escapedNotTodo.replace(/\n/g, '<br>') : '<span class="empty-text">—</span>';
+                const notesHtml = escapedNotes ? escapedNotes.replace(/\n/g, '<br>') : '<span class="empty-text">—</span>';
+                return `
+                <tr data-matchup-id="${m.matchup_id}">
+                <td class="opponent-cell">
+                    <div class="opponent-info">
+                        <img src="https://ddragon.leagueoflegends.com/cdn/{{ ddragon_version }}/img/champion/${m.opponent}.png"
+                             alt="${m.opponent}" class="opponent-icon">
+                        <span class="opponent-name">${m.opponent}</span>
+                    </div>
+                </td>
+                <td class="todo-cell">${todoHtml}</td>
+                <td class="not-todo-cell">${notTodoHtml}</td>
+                <td class="notes-cell">${notesHtml}</td>
+                <td class="actions-cell">
+                    <button type="button" class="icon-btn edit-mu-btn"
+                            data-matchup-id="${m.matchup_id}"
+                            data-opponent="${escapeHtmlAttr(m.opponent)}"
+                            data-todo="${escapeHtmlAttr(m.todo)}"
+                            data-not-todo="${escapeHtmlAttr(m.not_todo)}"
+                            data-notes="${escapeHtmlAttr(m.notes)}"
+                            aria-label="Edit matchup vs ${m.opponent}">
+                        <i data-lucide="square-pen"></i>
+                    </button>
+                    <button type="button" class="icon-btn delete-btn"
+                            data-matchup-id="${m.matchup_id}"
+                            data-opponent="${escapeHtmlAttr(m.opponent)}"
+                            aria-label="Delete matchup vs ${m.opponent}">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </td>
+            </tr>
+            `;
+            }).join('');
+
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function openAddChampModal() {
+            const modal = document.getElementById('addChampModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('champion_name')?.focus();
+            }
+        }
+
+        function closeAddChampModal() {
+            const modal = document.getElementById('addChampModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('addChampForm')?.reset();
+            }
+        }
+
+        function openAddMatchupModal() {
+            if (!activeChampId) return;
+            const champ = championData.find(c => c.pool_champion_id == activeChampId);
+            const nameEl = document.getElementById('matchupChampName');
+            const idInput = document.getElementById('matchupPoolChampionId');
+            const modal = document.getElementById('addMatchupModal');
+
+            if (nameEl) nameEl.textContent = champ ? champ.champion_name : '';
+            if (idInput) idInput.value = activeChampId;
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('matchup_opponent')?.focus();
+            }
+        }
+
+        function closeAddMatchupModal() {
+            const modal = document.getElementById('addMatchupModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('addMatchupForm')?.reset();
+            }
+        }
+
+        function openEditMatchupModal(matchupId, opponent, todo, notTodo, notes) {
+            const modal = document.getElementById('editMatchupModal');
+            if (!modal) return;
+
+            document.getElementById('editMatchupId').value = matchupId;
+            document.getElementById('editMatchupPoolChampionId').value = activeChampId;
+            document.getElementById('editMatchupOpponent').textContent = opponent;
+            document.getElementById('edit_matchup_opponent').value = opponent;
+            document.getElementById('edit_matchup_todo').value = todo;
+            document.getElementById('edit_matchup_not_todo').value = notTodo;
+            document.getElementById('edit_matchup_notes').value = notes;
+
+            modal.classList.remove('hidden');
+            document.getElementById('edit_matchup_opponent').focus();
+        }
+
+        function closeEditMatchupModal() {
+            const modal = document.getElementById('editMatchupModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('editMatchupForm')?.reset();
+            }
+        }
+
+        function showConfirmModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            if (!modal) return;
+
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            confirmCallback = onConfirm;
+            modal.classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                confirmCallback = null;
+            }
+        }
+
+        document.getElementById('confirmActionBtn')?.addEventListener('click', function () {
+            if (confirmCallback) confirmCallback();
+            closeConfirmModal();
+        });
+
+        function confirmDeleteChampion(champId, champName) {
+            showConfirmModal(
+                'Delete Champion',
+                `Remove ${champName} from your pool? This will also delete all matchups for this champion.`,
+                () => deleteChampion(champId)
+            );
+        }
+
+        async function deleteChampion(champId) {
+            try {
+                const resp = await fetch(`{{ url_for("delete_champion", grind_id=grind.grind_id) }}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({pool_champion_id: champId})
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.error || 'Failed to delete champion');
+                }
+            } catch (err) {
+                alert('Error deleting champion');
+            }
+        }
+
+        function confirmDeleteMatchup(matchupId, opponent) {
+            showConfirmModal(
+                'Delete Matchup',
+                `Remove matchup vs ${opponent}? This cannot be undone.`,
+                () => deleteMatchup(matchupId)
+            );
+        }
+
+        async function deleteMatchup(matchupId) {
+            try {
+                const resp = await fetch(`{{ url_for("delete_matchup", grind_id=grind.grind_id) }}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({matchup_id: matchupId})
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    await refreshChampionData();
+                    loadMatchups(activeChampId);
+                } else {
+                    alert(result.error || 'Failed to delete matchup');
+                }
+            } catch (err) {
+                alert('Error deleting matchup');
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeHtmlAttr(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\n/g, '&#10');
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function (e) {
+                if (e.target === this) {
+                    this.classList.add('hidden');
+                }
+            });
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => m.classList.add('hidden'));
+            }
+        });
+    </script>
+{% endblock %}

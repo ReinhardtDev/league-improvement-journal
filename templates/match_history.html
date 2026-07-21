@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="match-history-header">
+        <h2 class="grind-title">{{ grind.title }}</h2>
+        <button type="button" class="sync-btn" id="sync-matches-btn">
+            <span class="sync-icon">⟳</span>
+            <span>Load new Matches</span>
+        </button>
+    </div>
+
+    <ul class="match-list">
+        {% for match in grind.match_history.get_all_matches() %}
+            <li class="match-card-wrapper {{ 'victory' if 'victory' in match.result.lower() else 'defeat' }}">
+                <div class="match-card-without-notes">
+                    <div class="meta-col">
+                        <span><strong>Date:</strong> {{ match.date }}</span>
+                        <span><strong>Result:</strong> {{ match.result }}</span>
+                        <span><strong>Length:</strong> {{ match.match_length }}</span>
+                    </div>
+                    <div class="matchup-col">
+                        <img class="champ-icon"
+                             src="https://ddragon.leagueoflegends.com/cdn/{{ ddragon_version }}/img/champion/{{ match.champion }}.png"
+                             alt="{{ match.champion }}">
+                        <span class="vs-badge">VS</span>
+                        <img class="champ-icon"
+                             src="https://ddragon.leagueoflegends.com/cdn/{{ ddragon_version }}/img/champion/{{ match.opponent }}.png"
+                             alt="{{ match.opponent }}">
+                    </div>
+                    <div class="stats-col">
+                        <span><strong>KDA:</strong> {{ match.kills }}/{{ match.deaths }}/{{ match.assists }}</span>
+                        <span><strong>Ratio:</strong> {{ match.get_kda() }}</span>
+                        <span><strong>CS:</strong> {{ match.cs }} ({{ match.get_cspm() }} PM)</span>
+                    </div>
+                </div>
+
+                <div class="match-notes">
+                    <div class="notes-view-mode">
+                        {% if match.notes %}
+                            <strong>Review Notes:</strong>
+                            <blockquote>{{ match.notes | replace('\n', '<br>') | safe }}</blockquote>
+                            <button type="button" class="edit-btn" onclick="openEditor(this)">Edit Note</button>
+                        {% else %}
+                            <button type="button" class="edit-btn" onclick="openEditor(this)">+ Add Note</button>
+                        {% endif %}
+                    </div>
+
+                    <form class="notes-form hidden"
+                          action="{{ url_for('add_notes', grind_id=grind.grind_id, match_id=match.match_id) }}"
+                          method="POST">
+                        <textarea name="notes"
+                                  placeholder="What can you learn from this match?">{{ match.notes or '' }}</textarea>
+                        <div class="form-buttons">
+                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeEditor(this)">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </li>
+        {% else %}
+            <li class="no-matches">No matches logged in this grind yet!</li>
+        {% endfor %}
+    </ul>
+
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+    function openEditor(button) {
+        const container = button.closest('.match-notes');
+
+        container.querySelector('.notes-view-mode').classList.add('hidden');
+
+        container.querySelector('.notes-form').classList.remove('hidden');
+    }
+
+    function closeEditor(button) {
+        const container = button.closest('.match-notes');
+
+        container.querySelector('.notes-view-mode').classList.remove('hidden');
+
+        container.querySelector('.notes-form').classList.add('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const syncBtn = document.getElementById('sync-matches-btn');
+        if (syncBtn) {
+            syncBtn.addEventListener('click', async function() {
+                const originalText = syncBtn.innerHTML;
+                syncBtn.disabled = true;
+                syncBtn.innerHTML = '<span class="sync-icon">⟳</span><span>Syncing...</span>';
+
+                try {
+                    const response = await fetch('{{ url_for("load_matches", grind_id=grind.grind_id) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        alert(data.error || 'Failed to sync matches');
+                        syncBtn.disabled = false;
+                        syncBtn.innerHTML = originalText;
+                    }
+                } catch (error) {
+                    console.error('Sync error:', error);
+                    alert('Failed to sync matches. Check your connection.');
+                    syncBtn.disabled = false;
+                    syncBtn.innerHTML = originalText;
+                }
+            });
+        }
+    });
+    </script>
+{% endblock %}
