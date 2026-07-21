@@ -68,8 +68,8 @@ FlaskProject/
 ├── requirements.txt         # Python dependencies
 ├── .gitignore
 ├── README.md
-├── screenshots/             # App screenshots
-├── models/                  # SQLAlchemy models
+├── screenshots/
+├── models/
 │   ├── champion.py
 │   ├── champion_pool.py
 │   ├── grind.py
@@ -80,7 +80,7 @@ FlaskProject/
 │       ├── long_term_goal.py
 │       ├── per_game_goal.py
 │       └── rank_goal.py
-├── services/                # Business logic
+├── services/
 │   ├── champion_pool_manager.py
 │   ├── database_service.py
 │   ├── goal_manager.py
