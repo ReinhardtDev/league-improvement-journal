@@ -4,18 +4,57 @@
     <div class="goals-container">
 
         <div class="rank-goal-card">
-            {% if goal_manager.active_rank_goal %}
+            <div class="rank-goal-display" id="rankGoalDisplay">
+                {% if target_tier %}
+                    <span class="label">Rank Goal:</span>
+                    <span class="value">{{ target_tier }}</span>
+                    <button type="button" class="icon-btn edit-btn" onclick="showRankGoalEditor()"
+                            title="Edit rank goal">
+                        <i data-lucide="pencil" class="icon-sm"></i>
+                    </button>
+                {% else %}
+                    <span class="label">No rank goal set</span>
+                    <button type="button" class="icon-btn edit-btn" onclick="showRankGoalEditor()"
+                            title="Set rank goal">
+                        <i data-lucide="plus" class="icon-sm"></i>
+                    </button>
+                {% endif %}
+            </div>
+
+            <form class="rank-goal-editor hidden" id="rankGoalEditor"
+                  method="POST" action="{{ url_for('edit_rank_goal', grind_id=grind.grind_id) }}">
                 <span class="label">Rank Goal:</span>
-                <span class="value">{{ goal_manager.active_rank_goal.target_lp }} LP</span>
-            {% else %}
-                <span class="label">LP goal with graph etc. coming soon tm</span>
-            {% endif %}
-            <button type="button" class="btn goal-btn" onclick="openCreateGoalModal()">
-                <i data-lucide="plus" class="icon-sm"></i>
-                <span>Add Goal</span>
-            </button>
+                <select name="target_tier" class="tier-select">
+                    {% for t in ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'] %}
+                        <option value="{{ t }}" {% if target_tier == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-primary" style="padding:0.4rem 0.8rem;font-size:0.85rem;">Save</button>
+                <button type="button" class="btn-secondary" style="padding:0.4rem 0.8rem;font-size:0.85rem;"
+                        onclick="hideRankGoalEditor()">Cancel
+                </button>
+            </form>
+
+            <div class="rank-goal-right">
+                {% if peak %}
+                    <span class="peak-badge">
+                        <span class="peak-label">Peak</span>
+                        <span class="peak-value">{{ peak.tier }} {{ peak.division }} ({{ peak.lp }} LP)</span>
+                    </span>
+                {% endif %}
+                <button type="button" class="btn goal-btn" onclick="openCreateGoalModal()">
+                    <i data-lucide="plus" class="icon-sm"></i>
+                    <span>Add Goal</span>
+                </button>
+            </div>
         </div>
 
+        <div class="chart-wrapper">
+            <canvas id="rankChart"></canvas>
+            <div id="chartEmpty" class="no-data hidden">No rank data yet. Load some matches or record your current
+                rank!
+            </div>
+        </div>
 
         <div class="goals-grid">
 
@@ -88,7 +127,173 @@
 
 {% block scripts %}
     {{ super() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script>
+        const TIER_BASES = {
+            "IRON": 0, "BRONZE": 400, "SILVER": 800, "GOLD": 1200,
+            "PLATINUM": 1600, "EMERALD": 2000, "DIAMOND": 2400, "MASTER": 2800
+        };
+        const TIER_ORDER = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER"];
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            const resp = await fetch('{{ url_for("progression_data", grind_id=grind.grind_id) }}');
+            const data = await resp.json();
+
+            if (!data.success || !data.points.length) {
+                document.getElementById('chartEmpty').classList.remove('hidden');
+                return;
+            }
+
+            const targetLp = {{ target_lp if target_lp is not none else 'null' }};
+
+            const labels = data.points.map(p => p.date);
+            const values = data.points.map(p => p.rank_value);
+
+            let allValues = [...values];
+            if (targetLp !== null) {
+                allValues.push(targetLp);
+            }
+
+            const rawMin = Math.min(...allValues);
+            const rawMax = Math.max(...allValues);
+
+            let axisMin = Math.floor(rawMin / 400) * 400;
+            let axisMax = Math.ceil(rawMax / 400) * 400;
+
+            if (axisMax - axisMin < 1200) {
+                const mid = (axisMin + axisMax) / 2;
+                axisMin = Math.floor((mid - 600) / 400) * 400;
+                axisMax = Math.ceil((mid + 600) / 400) * 400;
+            }
+
+            const datasets = [{
+                label: 'Rank',
+                data: values,
+                borderColor: '#00db84',
+                backgroundColor: 'rgba(0, 219, 132, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: '#00db84',
+                pointBorderColor: '#0a1118',
+                pointBorderWidth: 2,
+            }];
+
+            if (targetLp !== null) {
+                datasets.push({
+                    label: 'Goal',
+                    data: Array(labels.length).fill(targetLp),
+                    borderColor: '#c8aa6e',
+                    borderWidth: 2,
+                    borderDash: [8, 4],
+                    pointRadius: 0,
+                    fill: false,
+                });
+            }
+
+            new Chart(document.getElementById('rankChart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets,
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            backgroundColor: '#141f29',
+                            titleColor: '#f0f4f8',
+                            bodyColor: '#b0c4de',
+                            borderColor: '#203040',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                label: function (ctx) {
+                                    if (ctx.dataset.label === 'Goal') {
+                                        return 'Goal: {{ target_tier if target_tier else "" }}';
+                                    }
+                                    const p = data.points[ctx.dataIndex];
+                                    return `${p.tier} ${p.division} - ${p.lp} LP`;
+                                }
+                            }
+                        },
+                        legend: {display: false}
+                    },
+                    scales: {
+                        x: {
+                            ticks: {color: '#52667a', maxTicksLimit: 10},
+                            grid: {color: 'rgba(32, 48, 64, 0.5)'}
+                        },
+                        y: {
+                            min: axisMin,
+                            max: axisMax,
+                            afterBuildTicks: function (axis) {
+                                if (targetLp !== null) {
+                                    axis.ticks = axis.ticks.filter(t => t.value !== axis.max);
+
+                                    axis.ticks = axis.ticks.filter(t => {
+                                        const diff = Math.abs(t.value - targetLp);
+                                        return diff === 0 || diff >= 150;
+                                    });
+
+                                    if (!axis.ticks.some(t => Math.abs(t.value - targetLp) < 0.5)) {
+                                        axis.ticks.push({value: targetLp});
+                                    }
+                                    axis.ticks.sort((a, b) => a.value - b.value);
+                                }
+                            },
+                            ticks: {
+                                stepSize: 400,
+                                color: '#52667a',
+                                callback: function (value) {
+                                    const getTierName = (lp) => {
+                                        if (lp >= 2800) {
+                                            const over = lp - 2800;
+                                            return over === 0 ? 'Master' : `${over}`;
+                                        }
+                                        for (const tier of TIER_ORDER) {
+                                            if (lp === TIER_BASES[tier]) {
+                                                return tier.charAt(0) + tier.slice(1).toLowerCase();
+                                            }
+                                        }
+                                        return null;
+                                    };
+
+                                    const tierName = getTierName(value);
+
+                                    if (targetLp !== null && Math.abs(value - targetLp) < 0.5) {
+                                        if (tierName) {
+                                            return `${tierName}`;
+                                        }
+                                        const lpVal = value >= 2800 ? value - 2800 : value;
+                                        return `${lpVal}`;
+                                    }
+
+                                    if (tierName) {
+                                        return tierName;
+                                    }
+
+                                    return value;
+                                }
+                            },
+                            grid: {color: 'rgba(32, 48, 64, 0.5)'}
+                        }
+                    }
+                }
+            });
+        });
+
+        function showRankGoalEditor() {
+            document.getElementById('rankGoalDisplay').classList.add('hidden');
+            document.getElementById('rankGoalEditor').classList.remove('hidden');
+        }
+
+        function hideRankGoalEditor() {
+            document.getElementById('rankGoalEditor').classList.add('hidden');
+            document.getElementById('rankGoalDisplay').classList.remove('hidden');
+        }
 
         const modal = document.getElementById('createGoalModal');
 

@@ -1,4 +1,3 @@
-# riot_api.py
 from datetime import datetime
 import requests
 from services.settings_manager import SettingsManager
@@ -81,7 +80,7 @@ class RiotApiService:
         return {
             "tier": tier,
             "rank": rank,
-            "league_points": league_points
+            "league_points": int(league_points)
         }
 
     def get_recent_matches_data(self, puuid: str, platform: str, last_match_time: int = None, limit: int = 20) -> list:
@@ -146,3 +145,34 @@ class RiotApiService:
             parsed_matches.append(parsed_match)
 
         return parsed_matches
+
+    def get_cutoffs(self, platform: str, queue: str = "RANKED_SOLO_5x5") -> tuple:
+        """
+        calculates the grandmaster and challenger cutoffs.
+        """
+        headers = self._get_headers()
+        all_entries = []
+
+        for league in ("challenger", "grandmaster"):
+            url = f"https://{platform}.api.riotgames.com/lol/league/v4/{league}leagues/by-queue/{queue}"
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            all_entries.extend(response.json().get("entries", []))
+
+        page = 1
+        while len(all_entries) < 1150:
+            url = f"https://{platform}.api.riotgames.com/lol/league-exp/v4/entries/{queue}/MASTER/I?page={page}"
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            entries = response.json()
+            if not entries:
+                break
+            all_entries.extend(entries)
+            page += 1
+
+        sorted_lps = sorted((entry["leaguePoints"] for entry in all_entries), reverse=True)
+
+        challenger_cutoff = max(sorted_lps[299] + 1 if len(sorted_lps) > 299 else (sorted_lps[-1] + 1 if sorted_lps else 800), 800)
+        grandmaster_cutoff = max(sorted_lps[999] + 1 if len(sorted_lps) > 999 else (sorted_lps[-1] + 1 if sorted_lps else 400), 400)
+
+        return challenger_cutoff, grandmaster_cutoff

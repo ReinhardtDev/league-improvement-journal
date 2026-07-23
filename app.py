@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from services.champion_pool_manager import ChampionPoolManager
 from services.goal_manager import GoalManager
 from services.grind_manager import GrindManager
+from models.goals.rank_goal import RankedGoal
+from services.rank_progression import RankProgressionManager
 from services.riot_api_service import RiotApiService
 from services.settings_manager import SettingsManager
 
@@ -38,6 +40,9 @@ def index():
     grinds = grind_manager.get_all_grinds()
     for grind in grinds:
         grind_manager.update_current_rank(grind.grind_id, grind.current_rank)
+        total_games, winrate = grind_manager.calculate_winrate(grind.grind_id)
+        grind.game_count = total_games
+        grind.winrate = winrate
     return render_template("index.html", grinds=grinds, show_navbar=False, 
                            key_status=key_status, key_message=key_message)
 
@@ -106,6 +111,9 @@ def view_grind(grind_id):
     grind = grind_manager.get_grind_by_id(grind_id)
     if not grind:
         return "Grind not found", 404
+    total_games, winrate = grind_manager.calculate_winrate(grind_id)
+    grind.game_count = total_games
+    grind.winrate = winrate
     return render_template('match_history.html', grind=grind)
 
 @app.route('/grind/<int:grind_id>/load_matches', methods=['POST'])
@@ -131,6 +139,19 @@ def load_matches(grind_id):
 
         grind.match_history.sync_api_matches(api_matches)
 
+        progression = RankProgressionManager(grind_id)
+        if not progression.has_snapshot_today():
+            rank_data = riot_service.get_current_rank(puuid, platform)
+            if rank_data['tier'].lower() != 'unranked':
+                progression.record_snapshot(rank_data['tier'], rank_data['rank'], rank_data['league_points'])
+
+        goal_manager = GoalManager(grind_id)
+        if goal_manager.active_rank_goal and goal_manager.active_rank_goal.target_tier in ("GRANDMASTER", "CHALLENGER"):
+            challenger_cutoff, grandmaster_cutoff = riot_service.get_cutoffs(platform)
+            cutoff = challenger_cutoff if goal_manager.active_rank_goal.target_tier == "CHALLENGER" else grandmaster_cutoff
+            goal_manager.active_rank_goal.target_lp = 2800 + cutoff
+            goal_manager.update_goal(goal_manager.active_rank_goal)
+
         return jsonify(success=True, redirect=url_for('view_grind', grind_id=grind_id))
 
     except Exception as e:
@@ -152,13 +173,49 @@ def add_notes(grind_id, match_id):
 
     return redirect(url_for('view_grind', grind_id=grind_id))
 
+@app.route('/grinds/<int:grind_id>/progression/data')
+def progression_data(grind_id):
+    grind = grind_manager.get_grind_by_id(grind_id)
+    if not grind:
+        return jsonify(success=False, error="Grind not found"), 404
+    progression = RankProgressionManager(grind_id)
+    points = progression.get_progression()
+    return jsonify(success=True, points=points)
+
+
+@app.route('/grinds/<int:grind_id>/progression/record', methods=['POST'])
+def record_snapshot(grind_id):
+    grind = grind_manager.get_grind_by_id(grind_id)
+    if not grind:
+        return jsonify(success=False, error="Grind not found"), 404
+
+    progression = RankProgressionManager(grind_id)
+    if progression.has_snapshot_today():
+        return jsonify(success=False, error="Already recorded today"), 400
+
+    rank_data = riot_service.get_current_rank(grind.puuid, grind.platform)
+    if rank_data['tier'].lower() == 'unranked':
+        return jsonify(success=False, error="Account is unranked"), 400
+
+    progression.record_snapshot(rank_data['tier'], rank_data['rank'], rank_data['league_points'])
+    return jsonify(success=True, message="Rank recorded!")
+
+
 @app.route('/grinds/<int:grind_id>/goals')
 def view_goals(grind_id):
     """goals page."""
     grind = grind_manager.get_grind_by_id(grind_id)
     goal_manager = GoalManager(grind_id)
-
-    return render_template('goals.html', goal_manager=goal_manager, grind=grind)
+    progression = RankProgressionManager(grind_id)
+    peak = progression.get_peak()
+    if goal_manager.active_rank_goal:
+        target_tier = goal_manager.active_rank_goal.target_tier
+        target_lp = goal_manager.active_rank_goal.target_lp
+    else:
+        target_tier = None
+        target_lp = None
+    return render_template('goals.html', goal_manager=goal_manager, grind=grind, peak=peak,
+                           target_tier=target_tier, target_lp=target_lp)
 
 
 @app.route('/grinds/<int:grind_id>/goals/add', methods=['POST'])
@@ -179,6 +236,36 @@ def add_goal(grind_id):
 
     goal_manager = GoalManager(grind_id)
     goal_manager.create_goal(goal_type, description)
+
+    return redirect(url_for('view_goals', grind_id=grind_id))
+
+
+@app.route('/grinds/<int:grind_id>/goals/rank/edit', methods=['POST'])
+def edit_rank_goal(grind_id):
+    grind = grind_manager.get_grind_by_id(grind_id)
+    if not grind:
+        return "Grind not found", 404
+
+    target_tier = request.form.get('target_tier', '').strip().upper()
+    if not target_tier:
+        return "Missing tier", 400
+
+    if target_tier in ("GRANDMASTER", "CHALLENGER"):
+        platform = grind.platform
+        challenger_cutoff, grandmaster_cutoff = riot_service.get_cutoffs(platform)
+        cutoff = challenger_cutoff if target_tier == "CHALLENGER" else grandmaster_cutoff
+        target_lp = 2800 + cutoff
+    else:
+        target_lp = RankedGoal.TIER_BASE_LP.get(target_tier, 0)
+
+    goal_manager = GoalManager(grind_id)
+    if goal_manager.active_rank_goal:
+        goal_manager.active_rank_goal.target_tier = target_tier
+        goal_manager.active_rank_goal.target_lp = target_lp
+        goal_manager.active_rank_goal.description = f"reach {target_tier}"
+        goal_manager.update_goal(goal_manager.active_rank_goal)
+    else:
+        goal_manager.create_goal('rank', target_tier=target_tier, target_lp=target_lp)
 
     return redirect(url_for('view_goals', grind_id=grind_id))
 

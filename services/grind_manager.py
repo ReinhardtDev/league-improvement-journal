@@ -88,3 +88,20 @@ class GrindManager:
                 grind.match_history = MatchHistory(row['id'])
                 all_grinds.append(grind)
             return all_grinds
+
+    def calculate_winrate(self, grind_id):
+        """Calculates the winrate and total games of a grind from the matches table."""
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) as total, SUM(CASE WHEN result = 'Victory' THEN 1 ELSE 0 END) as wins FROM matches WHERE grind_id = ?",
+                (grind_id,)
+            )
+            row = cursor.fetchone()
+            total = row['total'] if row else 0
+            wins = row['wins'] if row else 0
+
+        if total == 0:
+            return 0, "0%"
+        winrate = round((wins / total) * 100)
+        return total, f"{winrate}%"

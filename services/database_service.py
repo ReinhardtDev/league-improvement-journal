@@ -93,6 +93,7 @@ class DatabaseService:
                                description      TEXT DEFAULT '""',
                                reached          INTEGER DEFAULT 0,
                                target_lp        INTEGER,
+                               target_tier      TEXT,
                                FOREIGN KEY (grind_id) REFERENCES grinds (id) ON DELETE CASCADE
                            );
                            ''')
@@ -100,6 +101,17 @@ class DatabaseService:
             cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_rank_goal ON goals(grind_id) WHERE goal_type = 'rank';")
 
             cursor.execute("CREATE TABLE IF NOT EXISTS settings ( api_key TEXT NOT NULL PRIMARY KEY );")
+
+            cursor.execute('''
+                           CREATE TABLE IF NOT EXISTS rank_progression
+                           (
+                               id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                               grind_id    INTEGER NOT NULL,
+                               date        DATE    NOT NULL,
+                               rank        INTEGER    NOT NULL,
+                               FOREIGN KEY (grind_id) REFERENCES grinds (id) ON DELETE CASCADE
+                           );
+                           ''')
 
             conn.commit()
 

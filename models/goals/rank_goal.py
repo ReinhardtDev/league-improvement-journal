@@ -2,6 +2,8 @@ from models.goal import Goal
 
 class RankedGoal(Goal):
 
+    TIERS = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"]
+
     TIER_BASE_LP = {
         "IRON": 0,
         "BRONZE": 400,
@@ -22,10 +24,16 @@ class RankedGoal(Goal):
         "I": 300
     }
 
-    def __init__(self, goal_id, grind_id, goal_type, target_lp):
-        description = f"reach {target_lp}"
+    def __init__(self, goal_id, grind_id, goal_type, target_tier, target_lp=None):
+        self.target_tier = target_tier.upper() if target_tier else None
+        if target_lp is not None:
+            self.target_lp = target_lp
+        else:
+            self.target_lp = self.TIER_BASE_LP.get(self.target_tier, 0) if self.target_tier else 0
+        description = f"reach {self.target_tier}" if self.target_tier else ""
+
         super().__init__(goal_id, grind_id, goal_type, description)
-        self.target_lp = target_lp
+        self.goal_id = goal_id
 
     @classmethod
     def calculate_total_lp(cls, tier, division, lp):
@@ -64,4 +72,3 @@ class RankedGoal(Goal):
         final_lp = remainder - cls.DIVISION_MODIFIER[current_division]
 
         return current_tier, current_division, final_lp
-

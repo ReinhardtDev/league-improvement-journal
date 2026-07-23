@@ -11,20 +11,29 @@ class GoalManager:
         self.active_rank_goal = None
         self.load_all_goals()
 
-    def create_goal(self, goal_type, description=None, target_rank=None):
-        """creates a goal of a specific type."""
+    def create_goal(self, goal_type, description=None, target_tier=None, target_lp=None):
+        """creates a new goal of a specific type."""
         with db.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute(
-                """INSERT INTO goals (grind_id, goal_type, description, reached, target_lp)
-                   VALUES (?, ?, ?, 0, ?)""",
-                (self.grind_id, goal_type, description, target_rank)
-            )
+            if goal_type == 'rank':
+                if target_lp is None:
+                    target_lp = RankedGoal.TIER_BASE_LP.get(target_tier.upper(), 0)
+                cursor.execute(
+                    """INSERT INTO goals (grind_id, goal_type, description, reached, target_lp, target_tier)
+                       VALUES (?, ?, ?, 0, ?, ?)""",
+                    (self.grind_id, goal_type, f"reach {target_tier}", target_lp, target_tier.upper())
+                )
+            else:
+                cursor.execute(
+                    """INSERT INTO goals (grind_id, goal_type, description, reached, target_lp)
+                       VALUES (?, ?, ?, 0, ?)""",
+                    (self.grind_id, goal_type, description, None)
+                )
             conn.commit()
 
     def load_all_goals(self):
-        """adds all the goals from the db to the list of goals."""
+        """adds all goals from the db to the list of goals."""
         with db.get_connection() as conn:
             cursor = conn.cursor()
 
@@ -38,10 +47,12 @@ class GoalManager:
                 description = row['description']
 
                 if goal_type == 'rank':
-                    self.active_rank_goal = RankedGoal(goal_id, grind_id, goal_type, int(row['target_lp']))
+                    target_tier = row['target_tier']
+                    target_lp = row['target_lp']
+                    self.active_rank_goal = RankedGoal(goal_id, grind_id, goal_type, target_tier, target_lp)
 
                 elif goal_type == 'per_game':
-                    self.general_goals.append(PerGameGoal(goal_id, grind_id, goal_type, description))  # here put reached in future
+                    self.general_goals.append(PerGameGoal(goal_id, grind_id, goal_type, description))
 
                 elif goal_type == "long_term":
                     self.general_goals.append(LongTermGoal(goal_id, grind_id, goal_type, description))
@@ -54,23 +65,22 @@ class GoalManager:
             if isinstance(goal_object, RankedGoal):
                 cursor.execute("""
                                UPDATE goals
-                               SET target_lp = ?
-                               WHERE goal_id = ?
-                                 AND grind_id = ?
-                               """, (goal_object.target_lp, goal_object.goal_id, self.grind_id))
+                               SET target_tier = ?, target_lp = ?, description = ?
+                               WHERE id = ? AND grind_id = ?
+                               """, (goal_object.target_tier, goal_object.target_lp, goal_object.description, goal_object.goal_id, self.grind_id))
 
-            elif isinstance(goal_object, PerGameGoal): # here also reached in future
+            elif isinstance(goal_object, PerGameGoal):
                 cursor.execute("""
                                UPDATE goals
                                SET description = ?
-                               WHERE goal_id = ? AND grind_id = ?
+                               WHERE id = ? AND grind_id = ?
                                """, (goal_object.description, goal_object.goal_id, self.grind_id))
 
             elif isinstance(goal_object, LongTermGoal):
                 cursor.execute("""
                                UPDATE goals
                                SET description = ?
-                               WHERE goal_id = ? AND grind_id = ?
+                               WHERE id = ? AND grind_id = ?
                                """, (goal_object.description, goal_object.goal_id, self.grind_id))
 
             conn.commit()
@@ -80,7 +90,7 @@ class GoalManager:
         with db.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""DELETE FROM goals WHERE goal_id = ? AND grind_id = ?""", (goal_id, self.grind_id))
+            cursor.execute("""DELETE FROM goals WHERE id = ? AND grind_id = ?""", (goal_id, self.grind_id))
             conn.commit()
 
         if self.active_rank_goal and self.active_rank_goal.goal_id == goal_id:

@@ -1691,7 +1691,7 @@ font-size: 2.6rem;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -1708,6 +1708,87 @@ font-size: 2.6rem;
     font-weight: bold;
 }
 
+.rank-goal-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rank-goal-editor {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rank-goal-editor .tier-select {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+.rank-goal-editor .tier-select:focus {
+    outline: none;
+    border-color: var(--text-accent);
+    box-shadow: 0 0 0 3px rgba(0, 219, 132, 0.15);
+}
+
+.rank-goal-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+.peak-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(200, 170, 110, 0.15);
+    border: 1px solid rgba(200, 170, 110, 0.3);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+.peak-badge .peak-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.peak-badge .peak-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gold-light);
+}
+
+.chart-wrapper {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    height: 350px;
+    margin-bottom: 2rem;
+}
+
+.chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-wrapper .no-data {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 4rem 1rem;
+    font-size: 1.1rem;
+}
+
 .goals-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1715,7 +1796,7 @@ font-size: 2.6rem;
 }
 
 .goal-btn {
-    margin-left: auto;
+    white-space: nowrap;
 }
 
 @media (max-width: 768px) {
@@ -1780,3 +1861,4 @@ font-size: 2.6rem;
     line-height: 1.4;
     font-size: 0.95rem;
 }
+
