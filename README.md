@@ -68,8 +68,8 @@ FlaskProject/
 ├── requirements.txt         # Python dependencies
 ├── .gitignore
 ├── README.md
-├── screenshots/             # App screenshots
-├── models/                  # SQLAlchemy models
+├── screenshots/
+├── models/
 │   ├── champion.py
 │   ├── champion_pool.py
 │   ├── grind.py
