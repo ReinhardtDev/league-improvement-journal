@@ -62,7 +62,7 @@ Once validated, the app can fetch your match history and current rank automatica
 ## Project Structure
 
 ```
-FlaskProject/
+LeagueImprovementJournal/
 ├── app.py                    # Flask app entry point
 ├── lol_journal.db           # SQLite database (auto-created)
 ├── requirements.txt         # Python dependencies

@@ -38,5 +38,22 @@ class SettingsManager:
         cls.set('api_key', api_key)
 
     @classmethod
+    def get_theme(cls):
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT theme FROM settings")
+            row = cursor.fetchone()
+        if row and row['theme']:
+            return row['theme']
+        return 'summoners-rift'
+
+    @classmethod
+    def set_theme(cls, theme: str):
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE settings SET theme = ?", (theme,))
+            conn.commit()
+
+    @classmethod
     def clear_cache(cls):
         cls._cache.clear()

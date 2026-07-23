@@ -135,24 +135,25 @@
         };
         const TIER_ORDER = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER"];
 
+        function cssVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
         document.addEventListener('DOMContentLoaded', async function () {
             const resp = await fetch('{{ url_for("progression_data", grind_id=grind.grind_id) }}');
             const data = await resp.json();
 
             if (!data.success || !data.points.length) {
-                document.getElementById('chartEmpty').classList.remove('hidden');
+                document.getElementById('chartEmpty')?.classList.remove('hidden');
                 return;
             }
 
             const targetLp = {{ target_lp if target_lp is not none else 'null' }};
-
             const labels = data.points.map(p => p.date);
             const values = data.points.map(p => p.rank_value);
 
             let allValues = [...values];
-            if (targetLp !== null) {
-                allValues.push(targetLp);
-            }
+            if (targetLp !== null) allValues.push(targetLp);
 
             const rawMin = Math.min(...allValues);
             const rawMax = Math.max(...allValues);
@@ -166,33 +167,52 @@
                 axisMax = Math.ceil((mid + 600) / 400) * 400;
             }
 
+            const accentColor = cssVar('--text-accent') || '#ff4655';
+            const accentRgb = cssVar('--text-accent-rgb') || '255, 70, 85';
+            const goldColor = cssVar('--gold') || '#d4af37';
+            const textPrimary = cssVar('--text-primary') || '#ffffff';
+            const textSecondary = cssVar('--text-secondary') || '#e0e0e0';
+            const bgCard = cssVar('--bg-card') || 'rgba(15, 15, 20, 0.9)';
+            const borderLight = cssVar('--border-light') || 'rgba(255, 255, 255, 0.05)';
+
+            // Canvas element setup for gradient background
+            const canvas = document.getElementById('rankChart');
+            const ctx = canvas.getContext('2d');
+
+            // Create vertical gradient fading shadow fill
+            const gradientFill = ctx.createLinearGradient(0, 0, 0, 300);
+            gradientFill.addColorStop(0, `rgba(${accentRgb}, 0.35)`);
+            gradientFill.addColorStop(0.7, `rgba(${accentRgb}, 0.10)`);
+            gradientFill.addColorStop(1, `rgba(${accentRgb}, 0)`);
+
             const datasets = [{
                 label: 'Rank',
                 data: values,
-                borderColor: '#00db84',
-                backgroundColor: 'rgba(0, 219, 132, 0.1)',
-                borderWidth: 3,
+                borderColor: accentColor,
+                backgroundColor: gradientFill,
+                borderWidth: 1,
                 fill: true,
-                tension: 0.3,
-                pointRadius: 4,
-                pointBackgroundColor: '#00db84',
-                pointBorderColor: '#0a1118',
-                pointBorderWidth: 2,
+                tension: 0.35,
+                pointRadius: 2,
+                pointHoverRadius: 6,
+                pointBackgroundColor: accentColor,
+                pointBorderColor: '#000000',
+                pointBorderWidth: 1.5,
             }];
 
             if (targetLp !== null) {
                 datasets.push({
                     label: 'Goal',
                     data: Array(labels.length).fill(targetLp),
-                    borderColor: '#c8aa6e',
-                    borderWidth: 2,
-                    borderDash: [8, 4],
+                    borderColor: goldColor,
+                    borderWidth: 1.5,
+                    borderDash: [6, 6],
                     pointRadius: 0,
                     fill: false,
                 });
             }
 
-            new Chart(document.getElementById('rankChart'), {
+            new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -201,18 +221,23 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     plugins: {
                         tooltip: {
-                            backgroundColor: '#141f29',
-                            titleColor: '#f0f4f8',
-                            bodyColor: '#b0c4de',
-                            borderColor: '#203040',
+                            backgroundColor: bgCard,
+                            titleColor: textPrimary,
+                            bodyColor: textSecondary,
+                            borderColor: borderLight,
                             borderWidth: 1,
-                            padding: 12,
+                            padding: 10,
+                            displayColors: false,
                             callbacks: {
                                 label: function (ctx) {
                                     if (ctx.dataset.label === 'Goal') {
-                                        return 'Goal: {{ target_tier if target_tier else "" }}';
+                                        return `Goal: {{ target_tier if target_tier else "" }}`;
                                     }
                                     const p = data.points[ctx.dataIndex];
                                     return `${p.tier} ${p.division} - ${p.lp} LP`;
@@ -223,20 +248,24 @@
                     },
                     scales: {
                         x: {
-                            ticks: {color: '#52667a', maxTicksLimit: 10},
-                            grid: {color: 'rgba(32, 48, 64, 0.5)'}
+                            ticks: {
+                                color: textSecondary, // Higher contrast
+                                font: {size: 11},
+                                maxTicksLimit: 8
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.03)', // Very subtle gridlines
+                                drawBorder: false
+                            }
                         },
                         y: {
                             min: axisMin,
                             max: axisMax,
                             afterBuildTicks: function (axis) {
                                 if (targetLp !== null) {
+                                    // Filter ticks to keep chart clean around the target
                                     axis.ticks = axis.ticks.filter(t => t.value !== axis.max);
-
-                                    axis.ticks = axis.ticks.filter(t => {
-                                        const diff = Math.abs(t.value - targetLp);
-                                        return diff === 0 || diff >= 150;
-                                    });
+                                    axis.ticks = axis.ticks.filter(t => Math.abs(t.value - targetLp) >= 150);
 
                                     if (!axis.ticks.some(t => Math.abs(t.value - targetLp) < 0.5)) {
                                         axis.ticks.push({value: targetLp});
@@ -246,75 +275,77 @@
                             },
                             ticks: {
                                 stepSize: 400,
-                                color: '#52667a',
+                                color: textSecondary, // Dynamic brighter color
+                                font: {size: 11, weight: '500'},
+                                padding: 8,
                                 callback: function (value) {
-                                    const getTierName = (lp) => {
-                                        if (lp >= 2800) {
-                                            const over = lp - 2800;
-                                            return over === 0 ? 'Master' : `${over}`;
-                                        }
-                                        for (const tier of TIER_ORDER) {
-                                            if (lp === TIER_BASES[tier]) {
-                                                return tier.charAt(0) + tier.slice(1).toLowerCase();
-                                            }
-                                        }
-                                        return null;
-                                    };
-
-                                    const tierName = getTierName(value);
-
+                                    // Target LP label formatting
                                     if (targetLp !== null && Math.abs(value - targetLp) < 0.5) {
-                                        if (tierName) {
-                                            return `${tierName}`;
-                                        }
-                                        const lpVal = value >= 2800 ? value - 2800 : value;
-                                        return `${lpVal}`;
+                                        const over = value >= 2800 ? value - 2800 : value;
+                                        return `🎯 ${over} LP`;
                                     }
 
-                                    if (tierName) {
-                                        return tierName;
+                                    // Format standard Tier names cleanly
+                                    for (const tier of TIER_ORDER) {
+                                        if (value === TIER_BASES[tier]) {
+                                            return tier.charAt(0) + tier.slice(1).toLowerCase();
+                                        }
+                                    }
+
+                                    // Handle Master+ excess LP cleanly
+                                    if (value > 2800) {
+                                        return `${value - 2800} LP`;
                                     }
 
                                     return value;
                                 }
                             },
-                            grid: {color: 'rgba(32, 48, 64, 0.5)'}
+                            grid: {
+                                color: function (context) {
+                                    // Highlight target line grid in gold, otherwise faint white
+                                    if (targetLp !== null && Math.abs(context.tick.value - targetLp) < 0.5) {
+                                        return 'rgba(212, 175, 55, 0.2)';
+                                    }
+                                    return 'rgba(255, 255, 255, 0.04)';
+                                },
+                                drawBorder: false
+                            }
                         }
                     }
                 }
             });
         });
 
-        function showRankGoalEditor() {
-            document.getElementById('rankGoalDisplay').classList.add('hidden');
-            document.getElementById('rankGoalEditor').classList.remove('hidden');
-        }
+    function showRankGoalEditor() {
+    document.getElementById('rankGoalDisplay').classList.add('hidden');
+    document.getElementById('rankGoalEditor').classList.remove('hidden');
+    }
 
-        function hideRankGoalEditor() {
-            document.getElementById('rankGoalEditor').classList.add('hidden');
-            document.getElementById('rankGoalDisplay').classList.remove('hidden');
-        }
+    function hideRankGoalEditor() {
+    document.getElementById('rankGoalEditor').classList.add('hidden');
+    document.getElementById('rankGoalDisplay').classList.remove('hidden');
+    }
 
-        const modal = document.getElementById('createGoalModal');
+    const modal = document.getElementById('createGoalModal');
 
-        function openCreateGoalModal() {
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.getElementById('description').focus();
-            }
-        }
+    function openCreateGoalModal() {
+    if (modal) {
+    modal.classList.remove('hidden');
+    document.getElementById('description').focus();
+    }
+    }
 
-        function closeCreateGoalModal() {
-            if (modal) {
-                modal.classList.add('hidden');
-                document.getElementById('createGoalForm').reset();
-            }
-        }
+    function closeCreateGoalModal() {
+    if (modal) {
+    modal.classList.add('hidden');
+    document.getElementById('createGoalForm').reset();
+    }
+    }
 
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
-                closeCreateGoalModal();
-            }
-        });
+    document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+    closeCreateGoalModal();
+    }
+    });
     </script>
 {% endblock %}

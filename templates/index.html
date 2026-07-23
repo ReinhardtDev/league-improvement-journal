@@ -23,6 +23,28 @@
                             <i data-lucide="key" class="icon-sm"></i>
                         </button>
                     </div>
+                    <div class="theme-toggle">
+                        <button type="button" class="theme-btn" onclick="toggleThemePopover()" title="Change theme" aria-label="Change theme">
+                            <i data-lucide="palette"></i>
+                        </button>
+                        <div class="theme-popover hidden" id="themePopover">
+                            <button type="button" class="theme-option {% if theme == 'summoners-rift' %}active{% endif %}" data-theme="summoners-rift" onclick="setTheme('summoners-rift')">
+                                <span class="theme-swatch summoners-rift"></span>
+                                <span class="theme-option-label">Summoner's Rift</span>
+                                <span class="theme-check"><i data-lucide="check"></i></span>
+                            </button>
+                            <button type="button" class="theme-option {% if theme == 'spirit-blossom' %}active{% endif %}" data-theme="spirit-blossom" onclick="setTheme('spirit-blossom')">
+                                <span class="theme-swatch spirit-blossom"></span>
+                                <span class="theme-option-label">Spirit Blossom</span>
+                                <span class="theme-check"><i data-lucide="check"></i></span>
+                            </button>
+                            <button type="button" class="theme-option {% if theme == 'darkin' %}active{% endif %}" data-theme="darkin" onclick="setTheme('darkin')">
+                                <span class="theme-swatch darkin"></span>
+                                <span class="theme-option-label">Darkin</span>
+                                <span class="theme-check"><i data-lucide="check"></i></span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>

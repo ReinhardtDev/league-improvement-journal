@@ -100,7 +100,13 @@ class DatabaseService:
 
             cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_rank_goal ON goals(grind_id) WHERE goal_type = 'rank';")
 
-            cursor.execute("CREATE TABLE IF NOT EXISTS settings ( api_key TEXT NOT NULL PRIMARY KEY );")
+            cursor.execute("CREATE TABLE IF NOT EXISTS settings ( api_key TEXT NOT NULL PRIMARY KEY, theme TEXT DEFAULT 'summoners-rift' );")
+
+            # Migration: add theme column if missing
+            try:
+                cursor.execute("ALTER TABLE settings ADD COLUMN theme TEXT DEFAULT 'summoners-rift'")
+            except Exception:
+                pass
 
             cursor.execute('''
                            CREATE TABLE IF NOT EXISTS rank_progression

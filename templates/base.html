@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="{{ theme }}">
 <head>
     <meta charset="UTF-8">
     <title>League Improvement Journal</title>
@@ -10,6 +10,8 @@
 {% if show_navbar != False %}
     {% include 'nav_header.html' %}
 {% endif %}
+
+{% block theme_toggle_index %}{% endblock %}
 
 <main>
     {% block content %}
@@ -23,6 +25,42 @@
         document.addEventListener("DOMContentLoaded", function () {
             lucide.createIcons();
         });
+
+        function toggleThemePopover() {
+            const popover = document.getElementById('themePopover');
+            if (popover) popover.classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', function (e) {
+            const toggle = document.querySelector('.theme-toggle');
+            if (toggle && !toggle.contains(e.target)) {
+                const popover = document.getElementById('themePopover');
+                if (popover && !popover.classList.contains('hidden')) {
+                    popover.classList.add('hidden');
+                }
+            }
+        });
+
+        async function setTheme(theme) {
+            try {
+                const resp = await fetch('/api/theme', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({theme: theme})
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    document.documentElement.setAttribute('data-theme', theme);
+                    const popover = document.getElementById('themePopover');
+                    if (popover) popover.classList.add('hidden');
+                    document.querySelectorAll('.theme-option').forEach(function (opt) {
+                        opt.classList.toggle('active', opt.dataset.theme === theme);
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to set theme:', e);
+            }
+        }
     </script>
 {% endblock %}
 </body>

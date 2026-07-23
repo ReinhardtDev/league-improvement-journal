@@ -19,8 +19,9 @@ app = Flask(__name__)
 
 
 @app.context_processor
-def inject_ddragon_version():
-    return dict(ddragon_version=DDRAGON_VERSION)
+def inject_globals():
+    theme = settings_manager.get_theme()
+    return dict(ddragon_version=DDRAGON_VERSION, theme=theme)
 
 @app.route('/')
 def index():
@@ -420,6 +421,23 @@ def save_api_key():
     
     settings_manager.set_api_key(api_key)
     return jsonify(success=True, message="API key saved successfully!")
+
+
+@app.route('/api/theme', methods=['GET'])
+def get_theme():
+    theme = settings_manager.get_theme()
+    return jsonify(theme=theme)
+
+
+@app.route('/api/theme', methods=['POST'])
+def set_theme():
+    data = request.get_json() or {}
+    theme = data.get('theme', '').strip()
+    valid_themes = ['summoners-rift', 'spirit-blossom', 'darkin']
+    if theme not in valid_themes:
+        return jsonify(success=False, error="Invalid theme"), 400
+    settings_manager.set_theme(theme)
+    return jsonify(success=True, theme=theme)
 
 
 if __name__ == '__main__':
