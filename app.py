@@ -241,6 +241,14 @@ def add_goal(grind_id):
     return redirect(url_for('view_goals', grind_id=grind_id))
 
 
+@app.route('/grinds/<int:grind_id>/goals/delete/<int:goal_id>', methods=['POST'])
+def delete_goal(grind_id, goal_id):
+    """deletes a goal."""
+    goal_manager = GoalManager(grind_id)
+    goal_manager.delete_goal(goal_id)
+    return jsonify(success=True)
+
+
 @app.route('/grinds/<int:grind_id>/goals/rank/edit', methods=['POST'])
 def edit_rank_goal(grind_id):
     grind = grind_manager.get_grind_by_id(grind_id)

@@ -2071,6 +2071,7 @@ font-size: 2.6rem;
 }
 
 .goal-card {
+    position: relative;
     background-color: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: 6px;
@@ -2101,5 +2102,33 @@ font-size: 2.6rem;
     color: var(--text-secondary);
     line-height: 1.4;
     font-size: 0.95rem;
+}
+
+.goal-delete-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(var(--defeat-rgb), 0.1);
+    border: 1px solid transparent;
+    color: var(--defeat);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+.goal-card:hover .goal-delete-btn {
+    opacity: 1;
+}
+
+.goal-delete-btn:hover {
+    background: var(--defeat);
+    color: var(--bg-primary);
+    border-color: var(--defeat);
 }
 
