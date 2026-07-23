@@ -80,7 +80,7 @@ FlaskProject/
 │       ├── long_term_goal.py
 │       ├── per_game_goal.py
 │       └── rank_goal.py
-├── services/                # Business logic
+├── services/
 │   ├── champion_pool_manager.py
 │   ├── database_service.py
 │   ├── goal_manager.py
