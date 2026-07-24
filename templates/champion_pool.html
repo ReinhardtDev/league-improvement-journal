@@ -44,6 +44,21 @@
             </button>
         </div>
 
+        <div class="champion-notes" id="championNotes">
+            <div class="notes-view-mode" id="notesViewMode">
+                <strong>Notes:</strong>
+                <blockquote id="notesDisplay"></blockquote>
+                <button type="button" class="edit-btn" id="editNotesBtn">Edit</button>
+            </div>
+            <div class="notes-form hidden" id="notesForm">
+                <textarea id="notesTextarea" placeholder="Add notes about this champion..."></textarea>
+                <div class="form-buttons">
+                    <button type="button" class="btn-primary" id="saveNotesBtn">Save</button>
+                    <button type="button" class="btn-secondary" id="cancelNotesBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <div class="table-wrapper">
             <table class="matchup-table">
                 <thead>
@@ -202,6 +217,7 @@
                 document.getElementById('activeChampName').textContent = champ.champion_name;
                 document.getElementById('matchupCount').textContent = `${champ.matchups.length} matchup${champ.matchups.length !== 1 ? 's' : ''}`;
 
+                loadChampionNotes(champ);
                 loadMatchups(champId);
                 document.getElementById('matchupSection').style.display = 'block';
             }
@@ -232,6 +248,10 @@
                 else if (action === 'close-edit-matchup') closeEditMatchupModal();
                 else if (action === 'close-confirm') closeConfirmModal();
             });
+
+            document.getElementById('editNotesBtn')?.addEventListener('click', openNotesEditor);
+            document.getElementById('cancelNotesBtn')?.addEventListener('click', closeNotesEditor);
+            document.getElementById('saveNotesBtn')?.addEventListener('click', saveChampionNotes);
 
             if (championGrid) {
                 championGrid.addEventListener('click', function (e) {
@@ -430,6 +450,61 @@
 
             if (window.lucide) {
                 lucide.createIcons();
+            }
+        }
+
+        function loadChampionNotes(champ) {
+            const display = document.getElementById('notesDisplay');
+            const viewMode = document.getElementById('notesViewMode');
+            const editBtn = document.getElementById('editNotesBtn');
+            const textarea = document.getElementById('notesTextarea');
+
+            if (champ.notes && champ.notes.trim()) {
+                display.innerHTML = escapeHtml(champ.notes).replace(/\n/g, '<br>');
+                editBtn.textContent = 'Edit';
+            } else {
+                display.innerHTML = '';
+                editBtn.textContent = '+ Add Note';
+            }
+
+            viewMode.classList.remove('hidden');
+            document.getElementById('notesForm').classList.add('hidden');
+        }
+
+        function openNotesEditor() {
+            const champ = championData.find(c => c.pool_champion_id == activeChampId);
+            if (!champ) return;
+
+            document.getElementById('notesTextarea').value = champ.notes || '';
+            document.getElementById('notesViewMode').classList.add('hidden');
+            document.getElementById('notesForm').classList.remove('hidden');
+            document.getElementById('notesTextarea').focus();
+        }
+
+        function closeNotesEditor() {
+            document.getElementById('notesViewMode').classList.remove('hidden');
+            document.getElementById('notesForm').classList.add('hidden');
+        }
+
+        async function saveChampionNotes() {
+            const notes = document.getElementById('notesTextarea').value;
+            try {
+                const resp = await fetch('{{ url_for("update_champion_notes", grind_id=grind.grind_id) }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({pool_champion_id: activeChampId, notes: notes})
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    await refreshChampionData();
+                    const champ = championData.find(c => c.pool_champion_id == activeChampId);
+                    if (champ) loadChampionNotes(champ);
+                    closeNotesEditor();
+                } else {
+                    alert(result.error || 'Failed to save notes');
+                }
+            } catch (err) {
+                alert('Error saving notes');
             }
         }
 

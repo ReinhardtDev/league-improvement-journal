@@ -1,9 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+import threading
 
+import webview
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from waitress import serve
+
+from models.goals.rank_goal import RankedGoal
 from services.champion_pool_manager import ChampionPoolManager
 from services.goal_manager import GoalManager
 from services.grind_manager import GrindManager
-from models.goals.rank_goal import RankedGoal
 from services.rank_progression import RankProgressionManager
 from services.riot_api_service import RiotApiService
 from services.settings_manager import SettingsManager
@@ -134,7 +138,7 @@ def load_matches(grind_id):
         if latest_match is None:
             start_time = start_date // 1000
         else:
-            start_time = latest_match
+            start_time = latest_match // 1000
 
         api_matches = riot_service.get_recent_matches_data(puuid, platform, start_time)
 
@@ -384,6 +388,25 @@ def update_matchup(grind_id):
     return redirect(url_for('champion_pool', grind_id=grind_id))
 
 
+@app.route('/grinds/<int:grind_id>/champion_pool/update_champion_notes', methods=['POST'])
+def update_champion_notes(grind_id):
+    """updates the notes for a champion."""
+    if request.is_json:
+        data = request.get_json()
+        pool_champion_id = int(data.get('pool_champion_id', 0))
+        notes = data.get('notes', '').strip()
+    else:
+        pool_champion_id = request.form.get('pool_champion_id', type=int)
+        notes = request.form.get('notes', '').strip()
+
+    if pool_champion_id:
+        pool_manager.update_champion_notes(pool_champion_id, notes)
+
+    if request.is_json:
+        return jsonify(success=True)
+    return redirect(url_for('champion_pool', grind_id=grind_id))
+
+
 # API Key management endpoints
 @app.route('/api/key-status')
 def api_key_status():
@@ -447,6 +470,11 @@ def set_theme():
     settings_manager.set_theme(theme)
     return jsonify(success=True, theme=theme)
 
+def start_server():
+    serve(app, host='127.0.0.1', port=5000)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    threading.Thread(target=start_server, daemon=True).start()
+
+    webview.create_window("My Local App", "http://localhost:5000")
+    webview.start()

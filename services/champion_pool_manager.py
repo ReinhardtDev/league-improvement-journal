@@ -74,6 +74,17 @@ class ChampionPoolManager:
             conn.commit()
             return cursor.rowcount > 0
 
+    def update_champion_notes(self, pool_champion_id, notes):
+        """Updates a champion's notes."""
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE pool_champions SET notes = ? WHERE id = ?",
+                (notes, pool_champion_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def get_pool_by_grind_id(self, grind_id):
         """Fetches the pool, its champions, and all matchups for a given grind."""
         with db.get_connection() as conn:

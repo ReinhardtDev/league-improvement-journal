@@ -41,7 +41,7 @@ class MatchHistory:
         """Returns a list of all matches."""
         with db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM matches WHERE grind_id = ?", (self.grind_id,))
+            cursor.execute("SELECT * FROM matches WHERE grind_id = ? ORDER BY date DESC", (self.grind_id,))
             rows = cursor.fetchall()
 
             matches = []

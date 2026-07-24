@@ -50,10 +50,11 @@
         </div>
 
         <div class="chart-wrapper">
-            <canvas id="rankChart"></canvas>
-            <div id="chartEmpty" class="no-data hidden">No rank data yet. Load some matches or record your current
-                rank!
-            </div>
+            <canvas id="rankChart">
+                <div id="chartEmpty" class="no-data hidden">No rank data yet. Load some matches or record your current
+                    rank!
+                </div>
+            </canvas>
         </div>
 
         <div class="goals-grid">
@@ -137,7 +138,8 @@
         <div class="modal-box modal-confirm">
             <div class="modal-header">
                 <h3 id="confirmTitle">Confirm</h3>
-                <button type="button" class="modal-close" data-action="close-confirm" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close" data-action="close-confirm" aria-label="Close">&times;
+                </button>
             </div>
             <p id="confirmMessage"></p>
             <div class="modal-actions">
@@ -339,93 +341,93 @@
             });
         });
 
-    function showRankGoalEditor() {
-    document.getElementById('rankGoalDisplay').classList.add('hidden');
-    document.getElementById('rankGoalEditor').classList.remove('hidden');
-    }
-
-    function hideRankGoalEditor() {
-    document.getElementById('rankGoalEditor').classList.add('hidden');
-    document.getElementById('rankGoalDisplay').classList.remove('hidden');
-    }
-
-    const grindId = {{ grind.grind_id }};
-    let confirmCallback = null;
-    const confirmModal = document.getElementById('confirmModal');
-
-    function showConfirmModal(title, message, onConfirm) {
-        if (!confirmModal) return;
-        document.getElementById('confirmTitle').textContent = title;
-        document.getElementById('confirmMessage').textContent = message;
-        confirmCallback = onConfirm;
-        confirmModal.classList.remove('hidden');
-    }
-
-    function closeConfirmModal() {
-        if (confirmModal) {
-            confirmModal.classList.add('hidden');
-            confirmCallback = null;
+        function showRankGoalEditor() {
+            document.getElementById('rankGoalDisplay').classList.add('hidden');
+            document.getElementById('rankGoalEditor').classList.remove('hidden');
         }
-    }
 
-    document.getElementById('confirmActionBtn')?.addEventListener('click', function () {
-        if (confirmCallback) confirmCallback();
-        closeConfirmModal();
-    });
-
-    document.addEventListener('click', function (e) {
-        const action = e.target.closest('[data-action]')?.dataset.action;
-        if (action === 'close-confirm') closeConfirmModal();
-    });
-
-    document.addEventListener('click', function (e) {
-        const deleteBtn = e.target.closest('.goal-delete-btn');
-        if (deleteBtn) {
-            e.stopPropagation();
-            const goalId = deleteBtn.dataset.goalId;
-            showConfirmModal('Delete Goal', 'Delete this goal? This cannot be undone.', function () {
-                deleteGoal(goalId);
-            });
+        function hideRankGoalEditor() {
+            document.getElementById('rankGoalEditor').classList.add('hidden');
+            document.getElementById('rankGoalDisplay').classList.remove('hidden');
         }
-    });
 
-    async function deleteGoal(goalId) {
-        try {
-            const resp = await fetch('/grinds/' + grindId + '/goals/delete/' + goalId, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            });
-            const result = await resp.json();
-            if (result.success) {
-                location.reload();
-            } else {
-                alert(result.error || 'Failed to delete goal');
+        const grindId = {{ grind.grind_id }};
+        let confirmCallback = null;
+        const confirmModal = document.getElementById('confirmModal');
+
+        function showConfirmModal(title, message, onConfirm) {
+            if (!confirmModal) return;
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            confirmCallback = onConfirm;
+            confirmModal.classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            if (confirmModal) {
+                confirmModal.classList.add('hidden');
+                confirmCallback = null;
             }
-        } catch (err) {
-            alert('Error deleting goal');
         }
-    }
 
-    const modal = document.getElementById('createGoalModal');
+        document.getElementById('confirmActionBtn')?.addEventListener('click', function () {
+            if (confirmCallback) confirmCallback();
+            closeConfirmModal();
+        });
 
-    function openCreateGoalModal() {
-    if (modal) {
-    modal.classList.remove('hidden');
-    document.getElementById('description').focus();
-    }
-    }
+        document.addEventListener('click', function (e) {
+            const action = e.target.closest('[data-action]')?.dataset.action;
+            if (action === 'close-confirm') closeConfirmModal();
+        });
 
-    function closeCreateGoalModal() {
-    if (modal) {
-    modal.classList.add('hidden');
-    document.getElementById('createGoalForm').reset();
-    }
-    }
+        document.addEventListener('click', function (e) {
+            const deleteBtn = e.target.closest('.goal-delete-btn');
+            if (deleteBtn) {
+                e.stopPropagation();
+                const goalId = deleteBtn.dataset.goalId;
+                showConfirmModal('Delete Goal', 'Delete this goal? This cannot be undone.', function () {
+                    deleteGoal(goalId);
+                });
+            }
+        });
 
-    document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
-    closeCreateGoalModal();
-    }
-    });
+        async function deleteGoal(goalId) {
+            try {
+                const resp = await fetch('/grinds/' + grindId + '/goals/delete/' + goalId, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.error || 'Failed to delete goal');
+                }
+            } catch (err) {
+                alert('Error deleting goal');
+            }
+        }
+
+        const modal = document.getElementById('createGoalModal');
+
+        function openCreateGoalModal() {
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('description').focus();
+            }
+        }
+
+        function closeCreateGoalModal() {
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('createGoalForm').reset();
+            }
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeCreateGoalModal();
+            }
+        });
     </script>
 {% endblock %}

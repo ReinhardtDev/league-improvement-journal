@@ -1663,6 +1663,63 @@ font-size: 2.6rem;
     border-color: var(--defeat);
 }
 
+.champion-notes {
+    width: 100%;
+    max-width: var(--max-content);
+    margin: 0 auto;
+    padding: 1rem 0;
+}
+
+.champion-notes strong {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.champion-notes blockquote {
+    background: rgba(10, 17, 24, 0.5);
+    border-left: 3px solid var(--text-accent);
+    margin: 0 0 12px 0;
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.champion-notes .notes-view-mode .edit-btn {
+    margin-top: 4px;
+}
+
+.champion-notes .notes-form textarea {
+    width: 100%;
+    min-height: 100px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid rgba(240, 244, 248, 0.2);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+.champion-notes .notes-form textarea:focus {
+    outline: none;
+    border-color: var(--text-accent);
+}
+
+.champion-notes .notes-form .form-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
 .matchup-section {
     width: 100%;
     max-width: var(--max-content);
